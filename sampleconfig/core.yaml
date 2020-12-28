@@ -586,6 +586,7 @@ chaincode:
     # enabled system chaincodes
     system:
         _lifecycle: enable
+        evidence: enable
         cscc: enable
         lscc: enable
         escc: enable
