@@ -183,6 +183,33 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		}
 	}
 
+	if (ccID == "evidence"){
+		validationPlugin, args, err := v.GetInfoForValidate(chdr, ccID)
+		logger.Debugf("GetInfoForValidate for txId = %s ccID: %s", chdr.TxId, ccID)
+		if err != nil {
+			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
+			return err, peer.TxValidationCode_INVALID_OTHER_REASON
+		}
+		ctx := &Context{
+			Seq:       seq,
+			Envelope:  envBytes,
+			Block:     block,
+			TxID:      chdr.TxId,
+			Channel:   chdr.ChannelId,
+			Namespace: ccID,
+			Policy:    args,
+			PluginName: validationPlugin,
+		}
+		if err = v.invokeValidationPlugin(ctx); err != nil {
+			switch err.(type) {
+			case *commonerrors.VSCCEndorsementPolicyError:
+				return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
+			default:
+				return err, peer.TxValidationCode_INVALID_OTHER_REASON
+			}
+		}
+
+	}else{
 	// we've gathered all the info required to proceed to validation;
 	// validation will behave differently depending on the chaincode
 
@@ -215,6 +242,8 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 			}
 		}
 	}
+	}
+
 
 	logger.Debugf("[%s] Dispatch completes env bytes %p", chainID, envBytes)
 	return nil, peer.TxValidationCode_VALID
@@ -264,12 +293,19 @@ func (v *dispatcherImpl) getCDataForCC(channelID, ccid string) (string, []byte, 
 
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, validation plugin and policy
 func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (string, []byte, error) {
+	var args []byte
+	var plugin string
+	var err error
 	// obtain name of the validation plugin and the policy
-	plugin, args, err := v.getCDataForCC(chdr.ChannelId, ccID)
-	if err != nil {
-		msg := fmt.Sprintf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
-		logger.Errorf(msg)
-		return "", nil, err
+	if (ccID == "evidence"){
+		plugin, args, err = v.getCDataForCC(chdr.ChannelId, "_lifecycle")
+	}else{
+		plugin, args, err = v.getCDataForCC(chdr.ChannelId, ccID)
+		if err != nil {
+			msg := fmt.Sprintf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
+			logger.Errorf(msg)
+			return "", nil, err
+		}
 	}
 	return plugin, args, nil
 }

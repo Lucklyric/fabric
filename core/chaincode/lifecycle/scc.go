@@ -650,6 +650,7 @@ var (
 		"lscc": {},
 		"qscc": {},
 		"vscc": {},
+		"evidence": {},
 	}
 )
 
