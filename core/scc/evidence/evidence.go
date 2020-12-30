@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package evidence 
+package evidence
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-    "crypto/sha256"
-    "encoding/hex"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -19,7 +19,7 @@ type Evidence struct {
 }
 
 func New() *Evidence {
-	return &Evidence{};
+	return &Evidence{}
 }
 
 func (e *Evidence) Name() string              { return "evidence" }
@@ -62,9 +62,9 @@ func put(stub shim.ChaincodeStubInterface, args []string) (string, error) {
 	if len(args) != 1 {
 		return "", fmt.Errorf("Incorrect arguments. Expecting a value only")
 	}
-
-    hash := sha256.Sum256([]byte(args[0]))
-    hashString := hex.EncodeToString(hash[:])
+	escclogger.Infof("New evidence for channel: %s", stub.GetChannelID())
+	hash := sha256.Sum256([]byte(args[0] + stub.GetChannelID()))
+	hashString := hex.EncodeToString(hash[:])
 	errPut := stub.PutState(hashString, []byte(args[0]))
 	if errPut != nil {
 		return "", fmt.Errorf("Failed to put evidence: %s", args[0])
